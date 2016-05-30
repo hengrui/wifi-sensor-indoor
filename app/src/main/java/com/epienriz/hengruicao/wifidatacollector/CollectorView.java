@@ -6,7 +6,10 @@ import android.content.res.TypedArray;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
+import android.graphics.Point;
+import android.graphics.PointF;
 import android.graphics.Rect;
+import android.graphics.RectF;
 import android.graphics.drawable.Drawable;
 import android.text.TextPaint;
 import android.util.AttributeSet;
@@ -14,12 +17,16 @@ import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
 import android.view.View;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * TODO: document your custom view class.
  */
 public class CollectorView extends View {
     private Drawable mMapDrawable;
     private Drawable mLocationIcon;
+    static final Rect dimension = new Rect(-20, -20, 20, 20);
 
 
     //reference http://stackoverflow.com/questions/5743328/image-in-canvas-with-touch-events/5747233#5747233
@@ -57,9 +64,10 @@ public class CollectorView extends View {
 //        a.recycle();
         Resources res = getContext().getResources();
         mMapDrawable = res.getDrawable(R.drawable.lg1_canteen);
-        mLocationIcon = res.getDrawable(R.drawable.location_icon);
+        mLocationIcon = res.getDrawable(R.drawable.tick_green);
 
         mScaleDetector = new ScaleGestureDetector(getContext(), new ScaleListener());
+        rects = new ArrayList<>();
     }
 
     private class ScaleListener extends ScaleGestureDetector.SimpleOnScaleGestureListener {
@@ -68,12 +76,33 @@ public class CollectorView extends View {
             mScaleFactor *= detector.getScaleFactor();
 
             // Don't let the object get too small or too large.
-            mScaleFactor = Math.max(0.1f, Math.min(mScaleFactor, 10.0f));
+            mScaleFactor = Math.max(0.5f, Math.min(mScaleFactor, 3.0f));
 
             invalidate();
             return true;
         }
     }
+
+    List<PointF> rects;
+
+    public PointF convertTouch(PointF touch) {
+        PointF rt = new PointF(touch.x, touch.y);
+        rt.offset(-mPosX, -mPosY);
+        rt.x /= mScaleFactor;
+        rt.y /= mScaleFactor;
+        return rt;
+    }
+
+    public void addCoord(PointF coord) {
+        rects.add(coord);
+        invalidate();
+    }
+
+    public void addTouch(PointF touch){
+        rects.add(convertTouch(touch));
+        invalidate();
+    }
+    Rect tmpr = new Rect();
 
     @Override
     protected void onDraw(Canvas canvas) {
@@ -99,13 +128,14 @@ public class CollectorView extends View {
                     paddingLeft + contentWidth, paddingTop + contentHeight);
             mMapDrawable.draw(canvas);
         }
-        if (mLocationIcon != null) {
-            Rect region = new Rect(0, 0, contentWidth / 10, contentHeight / 10);
-            region.offset(paddingLeft, paddingTop);
-            mLocationIcon.setBounds(region);
+        for (PointF rf : rects) {
+            tmpr.left = Math.round(rf.x) + dimension.left;
+            tmpr.top = Math.round(rf.y) + dimension.top;
+            tmpr.right = Math.round(rf.x) + dimension.right;
+            tmpr.bottom = Math.round(rf.y) + dimension.bottom;
+            mLocationIcon.setBounds(tmpr);
             mLocationIcon.draw(canvas);
         }
-
         canvas.restore();
     }
 

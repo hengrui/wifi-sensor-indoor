@@ -8,10 +8,13 @@ import com.android.volley.Response;
 import com.android.volley.VolleyError;
 import com.android.volley.toolbox.JsonObjectRequest;
 
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -30,7 +33,51 @@ public class BmobRequest extends JsonObjectRequest {
         return new BmobRequest(method, url, jsonRequest, listener, errorListener);
     }
 
-    private BmobRequest(int method, String url, JSONObject jsonRequest,
+    //bmob support maximum 50 batch requests
+    public static List<BmobRequest> batchManyPost(String url, List<JSONObject> objects,
+                                                  Response.Listener<JSONObject> listener,
+                                                  Response.ErrorListener errorListener) {
+        int i = 0;
+        List<BmobRequest> rt = new ArrayList<>();
+        List<JSONObject> tmp = new ArrayList<>();
+        for (JSONObject robj : objects) {
+            if (i % 50 == 0 && tmp.size() > 0) {
+                rt.add(batchPost(url, tmp, listener, errorListener));
+                tmp.clear();
+            }
+            tmp.add(robj);
+            ++i;
+        }
+        if (tmp.size() > 0) {
+            rt.add(batchPost(url, tmp, listener, errorListener));
+        }
+        return rt;
+    }
+
+    //batch number of objects to one url
+    public static BmobRequest batchPost(String url, List<JSONObject> objects,
+                                        Response.Listener<JSONObject> listener,
+                                        Response.ErrorListener errorListener) {
+        JSONObject obj = new JSONObject();
+        try {
+            JSONArray requests = new JSONArray();
+            for (JSONObject o : objects) {
+                JSONObject element = new JSONObject();
+                o.put("ACL", new JSONObject().put("*", new JSONObject().put("read", true)));
+                element.put("body", o);
+                element.put("method", "POST");
+                element.put("path", url.substring(BmobDatabase.baseUrl.length()));
+                requests.put(element);
+            }
+            obj.put("requests", requests);
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+        Log.d("Request obj", obj.toString());
+        return new BmobRequest(Method.POST, BmobDatabase.batchUrl, obj, listener, errorListener);
+    }
+
+    protected BmobRequest(int method, String url, JSONObject jsonRequest,
                        final Response.Listener<JSONObject> listener, final Response.ErrorListener errorListener) {
         super(method, url, jsonRequest,
                 new Response.Listener<JSONObject>() {
@@ -54,6 +101,8 @@ public class BmobRequest extends JsonObjectRequest {
                 new Response.ErrorListener() {
                     @Override
                     public void onErrorResponse(VolleyError error) {
+                        if (error == null || error.networkResponse == null)
+                            return;
                         if (error.networkResponse.statusCode == 404) {
                             JSONObject response = null;
                             try {

@@ -1,3 +1,15 @@
 <resources>
     <string name="app_name">WifiDataCollector</string>
+    <string name="collect_title">Collecting...</string>
+    <string name="collect_message">pls patiently wait for around 2 seconds before move on...</string>
+    <string name="cancel">Cancel</string>
+    <string name="title_activity_auto_gen">AutoGenActivity</string>
+
+    <string name="navigation_drawer_open">Open navigation drawer</string>
+    <string name="navigation_drawer_close">Close navigation drawer</string>
+
+    <string name="action_settings">Settings</string>
+
+    <!-- TODO: Remove or change this placeholder text -->
+    <string name="hello_blank_fragment">Hello blank fragment</string>
 </resources>

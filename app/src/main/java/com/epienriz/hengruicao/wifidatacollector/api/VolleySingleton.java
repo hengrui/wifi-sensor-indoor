@@ -9,6 +9,10 @@ import com.android.volley.RequestQueue;
 import com.android.volley.toolbox.ImageLoader;
 import com.android.volley.toolbox.Volley;
 
+import org.json.JSONObject;
+
+import java.util.List;
+
 /**
  * Created by hengruicao on 5/5/16.
  */
@@ -57,6 +61,12 @@ public class VolleySingleton {
 
         public <T> void addToRequestQueue(Request<T> req) {
             getRequestQueue().add(req);
+        }
+
+        public <T extends Request<S>,S > void addManyToRequestQueue(List<T> reqs)  {
+            for (T r : reqs) {
+                addToRequestQueue(r);
+            }
         }
 
         public ImageLoader getImageLoader() {
