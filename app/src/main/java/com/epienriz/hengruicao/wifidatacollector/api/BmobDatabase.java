@@ -10,5 +10,7 @@ public class BmobDatabase {
 
     public static final String postWifiUrl = baseUrl + "/1/classes/Wifi/";
 
+    public static final String postSensorUrl = baseUrl + "/1/classes/Sensor/";
+
     public static final String batchUrl = baseUrl + "/1/batch";
 }

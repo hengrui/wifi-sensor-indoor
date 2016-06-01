@@ -28,7 +28,7 @@ public class SensorActivity extends AppCompatActivity implements SensorEventList
         mGyroSensor = (mGyroSensor != null) ? mGyroSensor :
                 mSensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
         mGyroSensor = (mGyroSensor != null) ? mGyroSensor :
-                mSensorManager.getDefaultSensor(Sensor.TYPE_GEOMAGNETIC_ROTATION_VECTOR)
+                mSensorManager.getDefaultSensor(Sensor.TYPE_GEOMAGNETIC_ROTATION_VECTOR);
         if (mGyroSensor == null) {
             Log.e("Sensor", "Not exist");
         }
