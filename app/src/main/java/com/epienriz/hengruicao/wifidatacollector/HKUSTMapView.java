@@ -460,4 +460,12 @@ public class HKUSTMapView extends View implements View.OnDragListener {
         getFloorLocation(floor).add(location);
         invalidate();
     }
+
+    public void centerTo(PointF location, String floor) {
+        setFloor(floor);
+        mWaitForTrigger = new PointF(location.x, location.y);
+        mCenterX = location.x;
+        mCenterY = location.y;
+        updatePosition();
+    }
 }

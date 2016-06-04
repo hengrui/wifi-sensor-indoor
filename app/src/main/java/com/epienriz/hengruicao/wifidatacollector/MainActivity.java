@@ -42,6 +42,7 @@ import android.view.SubMenu;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.LinearLayout;
+import android.widget.Toast;
 
 import com.android.volley.Request;
 import com.android.volley.Response;
@@ -52,6 +53,7 @@ import com.epienriz.hengruicao.wifidatacollector.api.BmobRequest;
 import com.epienriz.hengruicao.wifidatacollector.api.VolleySingleton;
 import com.epienriz.hengruicao.wifidatacollector.data.HKUSTFloor;
 import com.epienriz.hengruicao.wifidatacollector.data.ScanResultFilter;
+import com.google.android.gms.appdatasearch.GetRecentContextCall;
 import com.google.android.gms.appindexing.Action;
 import com.google.android.gms.appindexing.AppIndex;
 import com.google.android.gms.common.api.GoogleApiClient;
@@ -67,21 +69,23 @@ import java.util.Date;
 import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.concurrent.RunnableFuture;
 
 public class MainActivity extends AppCompatActivity
         implements NavigationView.OnNavigationItemSelectedListener
         , View.OnClickListener, SensorEventListener {
 
-    private static final int TIME_TO_SCAN = 10;
+    private static final int TIME_TO_SCAN = 5;
     private static final int TIME_TO_SENSOR = 20;
     private static final int SENSOR_DELAY = 1000; //1second
-    private static final int SCAN_DELAY = 200;
+    private static final int SCAN_DELAY = 500;
     List<JSONObject> scanResults = new ArrayList<>();
     HKUSTMapView collectorView;
     ScanResultFilter mFilter = new ScanResultFilter();
 
     ProgressDialog wifiDialog;
     private int wifiCount = 0;
+    private int sensorCount = 0;
     private Date mLastTriggerTime = new Date();
     private PointF mLastTriggerLocation;
     private WifiManager.WifiLock wifiLock;
@@ -103,9 +107,9 @@ public class MainActivity extends AppCompatActivity
 
                 if (wifiDialog.isShowing()) {
                     wifiDialog.dismiss();
-                    wifiFinish();
                     collectorView.addLocation(mLastTriggerLocation, collectorView.getFloor());
                 }
+                wifiFinish();
                 unregisterReceiver(wifiReceiver);
             } else {
                 Log.d("WiFi Measurement", "count " + wifiCount + "...");
@@ -132,7 +136,12 @@ public class MainActivity extends AppCompatActivity
                     scanResults.add(wifirecord);
                 }
                 wifiDialog.incrementProgressBy(1);
-                new MeasureWifi().execute();
+                new Handler().postDelayed(new Runnable() {
+                    @Override
+                    public void run() {
+                        new MeasureWifi().execute();
+                    }
+                }, SCAN_DELAY);
             }
         }
     };
@@ -152,6 +161,7 @@ public class MainActivity extends AppCompatActivity
 
     //Upload wifi stored in scanResults
     private void wifiFinish() {
+        Log.d("wifi finish", "" + scanResults.size());
         VolleySingleton.getInstance(this).addManyToRequestQueue(
                 BmobRequest.batchManyPost(BmobDatabase.postWifiUrl, scanResults, null, null)
         );
@@ -202,7 +212,11 @@ public class MainActivity extends AppCompatActivity
         wifiDialog.setOnCancelListener(new DialogInterface.OnCancelListener() {
             @Override
             public void onCancel(DialogInterface dialog) {
-                unregisterReceiver(wifiReceiver);
+                try {
+                    unregisterReceiver(wifiReceiver);
+                } catch (Exception ignored) {
+
+                }
             }
         });
         wifiDialog.setMax(TIME_TO_SCAN);
@@ -303,6 +317,14 @@ public class MainActivity extends AppCompatActivity
     //Some empty body function onStart etc
     @Override
     public boolean onNavigationItemSelected(MenuItem item) {
+        switch (item.getItemId()){
+            case R.id.nav_scan:
+                localize();
+                DrawerLayout mDrawerLayout;
+                mDrawerLayout = (DrawerLayout) findViewById(R.id.drawer_layout);
+                mDrawerLayout.closeDrawers();
+                return true;
+        }
         return false;
     }
 
@@ -322,14 +344,22 @@ public class MainActivity extends AppCompatActivity
 
     @Override
     public void onDestroy(){
+        try {
         if (wifiDialog != null) {
             wifiDialog.dismiss();
         }
         SensorManager sensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
         sensorManager.unregisterListener(this);
+
         unregisterReceiver(wifiReceiver);
         wifiLock.release();
         sensorTimer.cancel();
+        sensorTimer = null;
+
+        } catch (Exception e) {
+            Log.wtf("OnDestry", "Critical error");
+            e.printStackTrace();
+        }
         super.onDestroy();
     }
 
@@ -345,7 +375,56 @@ public class MainActivity extends AppCompatActivity
         return rt;
     }
 
+    /**
+     * Localize call to api
+     */
+    private void localize() {
+        final Context context = this;
+        final WifiManager wManager = (WifiManager) getSystemService(Context.WIFI_SERVICE);
+        wManager.startScan();
+        //careful, maybe unaccurate
+        List<ScanResult> results = wManager.getScanResults();
+        JSONObject obj = new JSONObject();
+        try {
+            JSONObject wifiRecords = new JSONObject();
+            for (ScanResult result : results) {
+                wifiRecords.put(result.BSSID, result.level);
+            }
+            obj.put("wifi", wifiRecords);
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+        Log.d("localize post data", obj.toString());
+        //temporary, to refactor to another dialog
+        FireCollectDialog();
+        BmobRequest apiRequest = BmobRequest.apiRequest(Request.Method.POST,
+                BmobDatabase.localizeUrl,
+                obj, new Response.Listener<JSONObject>() {
+                    @Override
+                    public void onResponse(JSONObject response) {
+                        try {
+                        int distance = response.getInt("distance");
+                        JSONObject locationJson = response.getJSONObject("location");
+                        String floor = locationJson.getString("floor");
+                        PointF xy = new PointF((float)locationJson.getDouble("x"), (float)locationJson.getDouble("y"));
+
+                            Toast.makeText(context, String.format("confidence: %d, floor: %s, x:%f, y%f",
+                                    distance, floor, xy.x, xy.y), Toast.LENGTH_LONG).show();
+                        if (wifiDialog.isShowing()) {
+                            wifiDialog.dismiss();
+                            collectorView.centerTo(xy, floor);
+                        }
+                        } catch (JSONException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                }, null);
+        VolleySingleton.getInstance(this).addToRequestQueue(apiRequest);
+    }
+
     private void sensorScan(final String floor, final PointF location) {
+        if (sensorTimer == null)
+            sensorTimer = new Timer();
         sensorTimer.scheduleAtFixedRate(new TimerTask() {
             @Override
             public void run() {
@@ -382,6 +461,7 @@ public class MainActivity extends AppCompatActivity
                 BmobRequest.batchManyPost(BmobDatabase.postSensorUrl, mSensorResults, null, null)
         );
         sensorTimer.cancel();
+        sensorTimer = null;
         mSensorResults.clear();
     }
 

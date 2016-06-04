@@ -23,6 +23,19 @@ import java.util.Map;
 public class BmobRequest extends JsonObjectRequest {
     Map<String,String> mHeaders;
 
+    /**
+     *
+     * @param method either get or post
+     * @param url remote url to get or post
+     * @param jsonRequest the object in JSON for the parameter
+     * @param listener nullable, called on success
+     * @param errorListener nullable, called on error
+     * @return A JsonObjectRequest that can be added to VolleyQueue
+     */
+    public static BmobRequest apiRequest(int method, String url, JSONObject jsonRequest, final Response.Listener<JSONObject> listener, final Response.ErrorListener errorListener) {
+        return new BmobRequest(method, url, jsonRequest, listener, errorListener);
+    }
+
     public static BmobRequest build(int method, String url, JSONObject jsonRequest,
                                     final Response.Listener<JSONObject> listener, final Response.ErrorListener errorListener) {
         try {

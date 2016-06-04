@@ -13,4 +13,15 @@ public class BmobDatabase {
     public static final String postSensorUrl = baseUrl + "/1/classes/Sensor/";
 
     public static final String batchUrl = baseUrl + "/1/batch";
+
+
+    //For js api
+    /**
+     * JS API callbacks
+     * Syntax as follow ${apiBaseUrl}/${apiKey}/${method}
+     */
+    public static final String apiKey = "47212f1fa79e88a1";
+    public static final String apiBaseUrl = "http://cloud.bmob.cn/";
+
+    public static final String localizeUrl = apiBaseUrl + apiKey + "/localize";
 }
