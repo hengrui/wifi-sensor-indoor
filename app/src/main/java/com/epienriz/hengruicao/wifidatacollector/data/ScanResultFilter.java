@@ -11,8 +11,6 @@ public class ScanResultFilter {
     };
 
     public boolean filter(ScanResult result) {
-        if (true)
-            return true;
         for (String ssid : ssids) {
             if (result.SSID.compareToIgnoreCase(ssid) == 0) {
                 return true;
