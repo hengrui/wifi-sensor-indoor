@@ -14,7 +14,7 @@ public class HKUSTMapBase {
 
     //@param
     //floor, mapcoorx, mapcoory, level
-    public static final String mapLabelUrl = baseUrl + "get_map_data_2.php";
+    public static final String mapLabelUrl = baseUrl + "phplib/get_map_data_2.php";
 
     //@param
     //floor, keyword
@@ -25,4 +25,11 @@ public class HKUSTMapBase {
         Log.d("format map url", rt);
         return rt;
     }
+
+    public static String formatMapLabelUrl(String floor, int x, int y, int sizeX, int sizeY) {
+        String rt = String.format(mapLabelUrl + "?floor=%s&MapCoorX=%d&MapCoorY=%d&offsetX=%d&offsetY=%d",
+                floor, x, y, sizeX, sizeY);
+        return rt;
+    }
+
 }

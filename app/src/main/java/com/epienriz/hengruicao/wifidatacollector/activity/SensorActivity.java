@@ -1,4 +1,4 @@
-package com.epienriz.hengruicao.wifidatacollector;
+package com.epienriz.hengruicao.wifidatacollector.activity;
 
 import android.content.Context;
 import android.hardware.Sensor;
@@ -8,6 +8,8 @@ import android.hardware.SensorManager;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
+
+import com.epienriz.hengruicao.wifidatacollector.R;
 
 import static java.lang.Math.cos;
 import static java.lang.Math.sin;

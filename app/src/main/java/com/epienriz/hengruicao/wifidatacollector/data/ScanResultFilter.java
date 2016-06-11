@@ -7,7 +7,7 @@ import android.net.wifi.ScanResult;
  */
 public class ScanResultFilter {
     String[] ssids = new String[]{
-            "eduroam", "Wi-Fi.HK via HKUST", "CSL", "Alumni", "University WiFi", "Y5Zone"
+            "eduroam", "Alumni"
     };
 
     public boolean filter(ScanResult result) {

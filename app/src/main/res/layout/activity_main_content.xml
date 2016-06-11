@@ -5,10 +5,10 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     app:layout_behavior="@string/appbar_scrolling_view_behavior"
-    tools:context="com.epienriz.hengruicao.wifidatacollector.MainActivity"
+    tools:context=".activity.MainActivity"
     tools:showIn="@layout/activity_main_app_bar">
 
-    <com.epienriz.hengruicao.wifidatacollector.HKUSTMapView
+    <com.epienriz.hengruicao.wifidatacollector.map.HKUSTMapView
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:id="@+id/collector" />
