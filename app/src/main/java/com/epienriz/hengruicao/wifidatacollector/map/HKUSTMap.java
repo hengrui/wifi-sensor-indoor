@@ -28,7 +28,7 @@ public class HKUSTMap {
 
     public Bitmap[][] images;
     private String mFloor = "G";
-    public float mCenterX, mCenterY;
+    public float mCenterX = 1000, mCenterY = 600;
 
     DataListener<Void> imageChangeListener;
     private final ImageLoader mImageLoader;

@@ -8,7 +8,7 @@ public class BmobDatabase {
 
     public static final String postTestUrl = baseUrl + "/1/classes/Test/";
 
-    public static final String postWifiUrl = baseUrl + "/1/classes/Wifi/";
+    public static final String postWifiUrl = baseUrl + "/1/classes/Wifi2/";
 
     public static final String postSensorUrl = baseUrl + "/1/classes/Sensor/";
 
@@ -23,5 +23,5 @@ public class BmobDatabase {
     public static final String apiKey = "47212f1fa79e88a1";
     public static final String apiBaseUrl = "http://cloud.bmob.cn/";
 
-    public static final String localizeUrl = apiBaseUrl + apiKey + "/localize";
+    public static final String localizeUrl = apiBaseUrl + apiKey + "/localize2";
 }

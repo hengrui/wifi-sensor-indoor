@@ -15,6 +15,7 @@ import com.android.volley.Response;
 import com.epienriz.hengruicao.wifidatacollector.activity.MainActivity;
 import com.epienriz.hengruicao.wifidatacollector.data.ScanResultFilter;
 
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -65,6 +66,8 @@ public class ObtainWifiData {
                 Log.d("WiFi Measurement", "count " + wifiCount + "...");
                 List<ScanResult> results = wManager.getScanResults();
                 Date now = new Date();
+
+                JSONArray wifis = new JSONArray();
                 for (ScanResult result : results) {
                     if (!wifiFilter.filter(result)) {
                         continue;
@@ -74,15 +77,22 @@ public class ObtainWifiData {
                     try {
                         wifirecord.put("BSSID", result.BSSID)
                                 .put("strength", result.level)
-                                .put("SSID", result.SSID)
-                                .put("timestamp", now.getTime())
-                                .put("user", mActivity.getUserIdentifier())
-                                .put("scan_idx", wifiCount)
-                                .put("location", locationJson);
+                                .put("SSID", result.SSID);
                     } catch (JSONException ignored) {
                     }
-                    scanResults.add(wifirecord);
+                    wifis.put(wifirecord);
                 }
+                JSONObject scanResult = new JSONObject();
+                try {
+                    scanResult.put("wifi", wifis)
+                            .put("timestamp", now.getTime())
+                            .put("user", mActivity.getUserIdentifier())
+                            .put("scan_idx", wifiCount)
+                            .put("location", locationJson);
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+                scanResults.add(scanResult);
 //                wifiDialog.incrementProgressBy(1);
                 new Handler().postDelayed(new Runnable() {
                     @Override

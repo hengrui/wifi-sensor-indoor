@@ -147,7 +147,7 @@ public class HKUSTMapView extends View implements View.OnDragListener {
         float contentHeight = (HKUSTMap.DIM_Y - 1) * HKUSTMap.MAP_DIM;
         PointF rt = new PointF(contentWidth / getScreenWidth(), contentHeight / getScreenHeight());
 
-        Log.d("rt ", String.format("%f %f", rt.x, rt.y));
+        //Log.d("rt ", String.format("%f %f", rt.x, rt.y));
         return rt;
     }
 
@@ -294,11 +294,14 @@ public class HKUSTMapView extends View implements View.OnDragListener {
         invalidate();
     }
 
+
+
     public void centerTo(PointF location, String floor) {
         setFloor(floor);
         mWaitForTrigger = new PointF(location.x, location.y);
         map.mCenterX = location.x;
         map.mCenterY = location.y;
-        updatePosition();
+        map.fetchImages();
+        mapLabels.updatePosition(map);
     }
 }

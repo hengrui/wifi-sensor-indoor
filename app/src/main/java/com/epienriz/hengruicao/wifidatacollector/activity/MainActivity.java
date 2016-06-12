@@ -5,6 +5,7 @@ import android.app.ProgressDialog;
 import android.content.ClipData;
 import android.content.Context;
 import android.content.DialogInterface;
+import android.content.Intent;
 import android.graphics.PointF;
 import android.hardware.SensorManager;
 import android.net.wifi.ScanResult;
@@ -17,17 +18,23 @@ import android.support.v4.view.GravityCompat;
 import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.ActionBarDrawerToggle;
 import android.os.Bundle;
+import android.support.v7.app.AlertDialog;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
+import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.SubMenu;
 import android.view.View;
+import android.view.ViewGroup;
+import android.widget.ArrayAdapter;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.android.volley.Request;
 import com.android.volley.Response;
+import com.epienriz.hengruicao.wifidatacollector.core.LocalizeKNN;
 import com.epienriz.hengruicao.wifidatacollector.map.HKUSTMapView;
 import com.epienriz.hengruicao.wifidatacollector.R;
 import com.epienriz.hengruicao.wifidatacollector.api.BmobDatabase;
@@ -43,7 +50,9 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class MainActivity extends BaseActivity
         implements NavigationView.OnNavigationItemSelectedListener
@@ -54,20 +63,22 @@ public class MainActivity extends BaseActivity
     ScanResultFilter mFilter = new ScanResultFilter();
 
     ProgressDialog wifiDialog;
-    private Date mLastTriggerTime = new Date();
     private PointF mLastTriggerLocation;
     private WifiManager.WifiLock wifiLock;
     private JSONObject locationJson;
 
+    private LocalizeKNN localizer;
     ObtainSensorData sensorMeasure;
     ObtainWifiData wifiMeasure;
+
+
+    Map<String, Integer> postedScan;
 
     private void wifiScan(final String floor, final PointF location) throws JSONException {
         mLastTriggerLocation = location;
         locationJson = new JSONObject()
                 .put("x", location.x).put("y", location.y)
                 .put("floor", floor);
-        mLastTriggerTime = new Date();
         FireCollectDialog();
         wifiMeasure.setCollectListener(new wifiCollectFinish());
         wifiMeasure.startCollect(locationJson);
@@ -212,6 +223,20 @@ public class MainActivity extends BaseActivity
         wifiMeasure = new ObtainWifiData(wifiManager, MainActivity.this);
         SensorManager sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
         sensorMeasure = new ObtainSensorData(sensorManager, this);
+
+        localizer = new LocalizeKNN(this);
+        postedScan = new HashMap<>();
+
+        Intent intent = getIntent();
+        Bundle args = intent.getExtras();
+        if (args.containsKey("floor")) {
+            if (getSupportActionBar() != null)
+                getSupportActionBar().setTitle(args.getString("floor"));
+            float pointx = (float)intent.getFloatExtra("pointx", 1000.0f);
+            float pointy = (float)intent.getFloatExtra("pointy", 600.0f);
+            Log.d("point", String.format("%f %f", pointx, pointy));
+            collectorView.centerTo(new PointF(pointx, pointy), args.getString("floor"));
+        }
     }
 
     private void changeFloor(String floor) {
@@ -221,16 +246,26 @@ public class MainActivity extends BaseActivity
     }
 
 
-    //Some empty body function onStart etc
-    @Override
-    public boolean onNavigationItemSelected(MenuItem item) {
+    boolean onNavigationItemSelectedHelper(MenuItem item) {
         switch (item.getItemId()){
             case R.id.nav_scan:
                 localize();
-                DrawerLayout mDrawerLayout;
-                mDrawerLayout = (DrawerLayout) findViewById(R.id.drawer_layout);
-                mDrawerLayout.closeDrawers();
                 return true;
+            case R.id.nav_log:
+                scan_log();
+                return true;
+        }
+        return false;
+    }
+
+    //Some empty body function onStart etc
+    @Override
+    public boolean onNavigationItemSelected(MenuItem item) {
+        if (onNavigationItemSelectedHelper(item)) {
+            DrawerLayout mDrawerLayout;
+            mDrawerLayout = (DrawerLayout) findViewById(R.id.drawer_layout);
+            mDrawerLayout.closeDrawers();
+            return true;
         }
         return false;
     }
@@ -278,7 +313,6 @@ public class MainActivity extends BaseActivity
         //careful, maybe unaccurate
     }
 
-
     private class wifiLocalize implements DataListener<Void> {
         @Override
         public void notifyResult(Void unused) {
@@ -304,12 +338,12 @@ public class MainActivity extends BaseActivity
                         @Override
                         public void onResponse(JSONObject response) {
                             try {
-                                int distance = response.getInt("distance");
-                                JSONObject locationJson = response.getJSONObject("location");
-                                String floor = locationJson.getString("floor");
-                                PointF xy = new PointF((float)locationJson.getDouble("x"), (float)locationJson.getDouble("y"));
+                                LocalizeKNN.KEntry best = localizer.localize(response);
+                                int distance = best.distance;
+                                String floor = best.floor;
+                                PointF xy = new PointF((float)best.x, (float)best.y);
 
-                                Toast.makeText(context, String.format("confidence: %d, floor: %s, x:%f, y%f",
+                                Toast.makeText(context, String.format("estimate: %d, floor: %s, x:%f, y%f",
                                         distance, floor, xy.x, xy.y), Toast.LENGTH_LONG).show();
                                 if (wifiDialog.isShowing()) {
                                     wifiDialog.dismiss();
@@ -323,5 +357,57 @@ public class MainActivity extends BaseActivity
                     }, null);
             VolleySingleton.getInstance(context).addToRequestQueue(apiRequest);
         }
+    }
+
+    private void scan_log() {
+        AlertDialog.Builder builderSingle = new AlertDialog.Builder(this);
+        builderSingle.setTitle("Log");
+
+        WifiManager wifiManager = (WifiManager)getSystemService(WIFI_SERVICE);
+        final wifiAdapter arrayAdapter = new wifiAdapter(
+                this,
+                wifiManager.getScanResults());
+        builderSingle.setNegativeButton(
+                "cancel",
+                new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        dialog.dismiss();
+                    }
+                });
+        builderSingle.setAdapter(
+                arrayAdapter, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+
+                    }
+                });
+        builderSingle.show();
+    }
+
+    class wifiAdapter extends ArrayAdapter<ScanResult> {
+
+        public wifiAdapter(Context context, List<ScanResult> objects) {
+            super(context, 0, objects);
+        }
+
+        @Override
+        public View getView(int position, View convertView, ViewGroup parent) {
+            // Get the data item for this position
+            ScanResult result = getItem(position);
+            // Check if an existing view is being reused, otherwise inflate the view
+            if (convertView == null) {
+                convertView = LayoutInflater.from(getContext()).inflate(R.layout.scan_item, parent, false);
+            }
+            // Lookup view for data population
+            TextView tvBSSID = (TextView) convertView.findViewById(R.id.scan_BSSID);
+            TextView tvLevel = (TextView) convertView.findViewById(R.id.scan_level);
+            // Populate the data into the template view using the data object
+            tvBSSID.setText(result.BSSID);
+            tvLevel.setText(String.format("level %d", result.level));
+            // Return the completed view to render on screen
+            return convertView;
+        }
+
     }
 }
